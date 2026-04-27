@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { MessageBatchSchema } from "@mytool/shared";
 import { prisma } from "../db.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { forbidden, notFound } from "../lib/errors.js";
@@ -540,3 +541,86 @@ dashboardRoute.get(
     });
   },
 );
+
+/**
+ * POST /api/projects/:projectId/sessions/:sessionId/messages
+ * CLI가 Stop 이벤트 후 transcript 파싱 결과를 전송한다.
+ * 멱등성: 기존 메시지 전체 삭제 후 재삽입.
+ */
+dashboardRoute.post(
+  "/:projectId/sessions/:sessionId/messages",
+  zValidator("json", MessageBatchSchema),
+  async (c) => {
+    const projectId = c.req.param("projectId");
+    const sessionId = c.req.param("sessionId");
+    const authUserId = c.get("userId");
+    const { messages } = c.req.valid("json");
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { orgId: true },
+    });
+    if (!project) throw notFound("Project not found");
+    const membership = await prisma.orgMembership.findUnique({
+      where: { userId_orgId: { userId: authUserId, orgId: project.orgId } },
+    });
+    if (!membership) throw forbidden();
+
+    if (messages.length === 0) return c.json({ ok: true, saved: 0 });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.message.deleteMany({ where: { sessionId } });
+      await tx.message.createMany({
+        data: messages.map((m, idx) => ({
+          sessionId,
+          role: m.role,
+          content: m.content,
+          orderIdx: idx,
+          timestamp: new Date(m.timestamp),
+        })),
+      });
+    });
+
+    return c.json({ ok: true, saved: messages.length });
+  },
+);
+
+/**
+ * GET /api/projects/:projectId/sessions/:sessionId/messages
+ * 세션 대화 내역 조회
+ */
+dashboardRoute.get("/:projectId/sessions/:sessionId/messages", async (c) => {
+  const projectId = c.req.param("projectId");
+  const sessionId = c.req.param("sessionId");
+  const authUserId = c.get("userId");
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { orgId: true },
+  });
+  if (!project) throw notFound("Project not found");
+  const membership = await prisma.orgMembership.findUnique({
+    where: { userId_orgId: { userId: authUserId, orgId: project.orgId } },
+  });
+  if (!membership) throw forbidden();
+
+  const [total, messages] = await Promise.all([
+    prisma.message.count({ where: { sessionId } }),
+    prisma.message.findMany({
+      where: { sessionId },
+      orderBy: { orderIdx: "asc" },
+      take: 500,
+    }),
+  ]);
+
+  return c.json({
+    total,
+    messages: messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      orderIdx: m.orderIdx,
+      timestamp: m.timestamp.toISOString(),
+    })),
+  });
+});
