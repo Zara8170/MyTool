@@ -80,15 +80,30 @@ export async function computeSessionOutlierStats(
     toolGroups.get(key)!.push(pair);
   }
 
+  // 프로젝트 기준선 조회 (MIN_SAMPLES 미달 툴에 fallback으로 사용)
+  const projectBaselines = await prisma.projectToolBaseline.findMany({
+    where: { projectId },
+    select: { toolName: true, p50Ms: true },
+  });
+  const baselineMap = new Map(projectBaselines.map((b) => [b.toolName, b.p50Ms]));
+
   const outliers: { toolName: string | null; durationMs: number; medianMs: number }[] = [];
   let eligiblePairs = 0;
 
-  for (const group of toolGroups.values()) {
-    if (group.length < MIN_SAMPLES) continue;
-    eligiblePairs += group.length;
+  for (const [toolKey, group] of toolGroups) {
+    let medianMs: number;
 
-    const sorted = [...group].sort((a, b) => a.durationMs - b.durationMs);
-    const medianMs = sorted[Math.floor(sorted.length / 2)]!.durationMs;
+    if (group.length >= MIN_SAMPLES) {
+      const sorted = [...group].sort((a, b) => a.durationMs - b.durationMs);
+      medianMs = sorted[Math.floor(sorted.length / 2)]!.durationMs;
+    } else {
+      // 샘플 부족 → 프로젝트 기준선 fallback
+      const baseline = baselineMap.get(toolKey);
+      if (!baseline) continue;
+      medianMs = baseline;
+    }
+
+    eligiblePairs += group.length;
     const threshold = medianMs * 10;
 
     for (const pair of group) {
