@@ -158,8 +158,8 @@ eventsRoute.post(
             },
           }),
         )
-        .catch(() => {
-          // 집계 실패는 무시 (이벤트 수신 자체는 성공)
+        .catch((err) => {
+          console.warn("[outlier] aggregation failed", { sessionId: event.sessionId, err });
         });
     }
 

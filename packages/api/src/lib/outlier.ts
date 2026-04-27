@@ -57,20 +57,21 @@ export async function computeSessionOutlierStats(
 
   const outliers = pairs.filter((p) => p.durationMs > threshold);
 
-  // 멱등성: 기존 레코드 삭제 후 재삽입
-  await prisma.sessionOutlierEvent.deleteMany({ where: { sessionId } });
-
-  if (outliers.length > 0) {
-    await prisma.sessionOutlierEvent.createMany({
-      data: outliers.map((o) => ({
-        sessionId,
-        projectId,
-        toolName: o.toolName ?? "unknown",
-        durationMs: o.durationMs,
-        medianMs,
-      })),
-    });
-  }
+  // 멱등성: 기존 레코드 삭제 후 재삽입 (원자성 보장)
+  await prisma.$transaction(async (tx) => {
+    await tx.sessionOutlierEvent.deleteMany({ where: { sessionId } });
+    if (outliers.length > 0) {
+      await tx.sessionOutlierEvent.createMany({
+        data: outliers.map((o) => ({
+          sessionId,
+          projectId,
+          toolName: o.toolName ?? "unknown",
+          durationMs: o.durationMs,
+          medianMs,
+        })),
+      });
+    }
+  });
 
   return {
     outlierCount: outliers.length,

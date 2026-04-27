@@ -56,67 +56,70 @@ dashboardRoute.get(
 
     const userFilter = filterUserId ? { userId: filterUserId } : {};
 
-    // Sessions count (시작 기준)
-    const totalSessions = await prisma.claudeSession.count({
-      where: {
-        projectId,
-        startedAt: { gte: from, lte: to },
-        ...userFilter,
-      },
-    });
+    const [totalSessions, activeUsersAgg, usageAgg, topSkillsRaw, topAgentsRaw] =
+      await Promise.all([
+        prisma.claudeSession.count({
+          where: { projectId, startedAt: { gte: from, lte: to }, ...userFilter },
+        }),
+        prisma.event.findMany({
+          where: { projectId, timestamp: { gte: from, lte: to }, ...userFilter },
+          distinct: ["userId"],
+          select: { userId: true },
+        }),
+        prisma.usageRecord.aggregate({
+          where: { projectId, recordedAt: { gte: from, lte: to }, ...userFilter },
+          _sum: {
+            inputTokens: true,
+            outputTokens: true,
+            cacheReadInputTokens: true,
+            cacheCreationInputTokens: true,
+            estimatedCostUsd: true,
+          },
+        }),
+        prisma.event.groupBy({
+          by: ["skillName"],
+          where: {
+            projectId,
+            timestamp: { gte: from, lte: to },
+            isSkillCall: true,
+            skillName: { not: null },
+            ...userFilter,
+          },
+          _count: { _all: true },
+          orderBy: { _count: { skillName: "desc" } },
+          take: 10,
+        }),
+        prisma.event.groupBy({
+          by: ["agentType"],
+          where: {
+            projectId,
+            timestamp: { gte: from, lte: to },
+            isAgentCall: true,
+            agentType: { not: null },
+            ...userFilter,
+          },
+          _count: { _all: true },
+          orderBy: { _count: { agentType: "desc" } },
+          take: 10,
+        }),
+      ]);
 
-    // 활성 사용자 (해당 기간에 이벤트 발생시킨 distinct user)
-    const activeUsersAgg = await prisma.event.findMany({
-      where: { projectId, timestamp: { gte: from, lte: to }, ...userFilter },
-      distinct: ["userId"],
-      select: { userId: true },
-    });
-
-    // 토큰·비용 합산
-    const usageAgg = await prisma.usageRecord.aggregate({
-      where: { projectId, recordedAt: { gte: from, lte: to }, ...userFilter },
-      _sum: {
-        inputTokens: true,
-        outputTokens: true,
-        cacheReadInputTokens: true,
-        cacheCreationInputTokens: true,
-        estimatedCostUsd: true,
-      },
-    });
-
-    // Top skills
-    const topSkillsRaw = await prisma.event.groupBy({
-      by: ["skillName"],
-      where: {
-        projectId,
-        timestamp: { gte: from, lte: to },
-        isSkillCall: true,
-        skillName: { not: null },
-        ...userFilter,
-      },
-      _count: { _all: true },
-      orderBy: { _count: { skillName: "desc" } },
-      take: 10,
-    });
-
-    // Top agent types
-    const topAgentsRaw = await prisma.event.groupBy({
-      by: ["agentType"],
-      where: {
-        projectId,
-        timestamp: { gte: from, lte: to },
-        isAgentCall: true,
-        agentType: { not: null },
-        ...userFilter,
-      },
-      _count: { _all: true },
-      orderBy: { _count: { agentType: "desc" } },
-      take: 10,
-    });
+    const outlierSessionFilter = filterUserId
+      ? {
+          sessionId: {
+            in: (
+              await prisma.claudeSession.findMany({
+                where: { projectId, userId: filterUserId },
+                select: { id: true },
+              })
+            ).map((s) => s.id),
+          },
+        }
+      : {};
 
     const outliersByToolRaw = await prisma.sessionOutlierEvent.groupBy({
       by: ["toolName"],
-      where: { projectId, createdAt: { gte: from, lte: to } },
+      where: { projectId, createdAt: { gte: from, lte: to }, ...outlierSessionFilter },
       _count: { id: true },
       _avg: { durationMs: true },
       _max: { durationMs: true },
