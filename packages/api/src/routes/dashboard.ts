@@ -114,6 +114,14 @@ dashboardRoute.get(
       take: 10,
     });
 
+    const outliersByToolRaw = await prisma.sessionOutlierEvent.groupBy({
+      by: ["toolName"],
+      where: { projectId, createdAt: { gte: from, lte: to } },
+      _count: { id: true },
+      _avg: { durationMs: true },
+      _max: { durationMs: true },
+    });
+
     return c.json({
       totalSessions,
       activeUsers: activeUsersAgg.length,
@@ -128,6 +136,12 @@ dashboardRoute.get(
       topAgentTypes: topAgentsRaw
         .filter((r) => r.agentType)
         .map((r) => ({ agentType: r.agentType!, callCount: r._count._all })),
+      outliersByTool: outliersByToolRaw.map((r) => ({
+        toolName: r.toolName,
+        occurrences: r._count.id,
+        avgDurationMs: Math.round(r._avg.durationMs ?? 0),
+        maxDurationMs: r._max.durationMs ?? 0,
+      })),
     });
   },
 );
