@@ -11,6 +11,7 @@ import {
   truncateToolPayload,
 } from "../lib/events.js";
 import { computeSessionOutlierStats } from "../lib/outlier.js";
+import { updateProjectToolBaselines } from "../lib/baseline.js";
 
 export const eventsRoute = new Hono();
 
@@ -161,6 +162,10 @@ eventsRoute.post(
         .catch((err) => {
           console.warn("[outlier] aggregation failed", { sessionId: event.sessionId, err });
         });
+
+      updateProjectToolBaselines(event.projectId).catch((err) => {
+        console.warn("[baseline] update failed", { projectId: event.projectId, err });
+      });
     }
 
     return c.json({ ok: true }, 202);
