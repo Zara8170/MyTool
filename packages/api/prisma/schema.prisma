@@ -113,6 +113,7 @@ model Project {
   events       Event[]
   usageRecords UsageRecord[]
   outlierEvents SessionOutlierEvent[]
+  toolBaselines ProjectToolBaseline[]
 
   @@unique([orgId, slug])
   @@map("projects")
@@ -159,6 +160,22 @@ model SessionOutlierEvent {
   @@index([projectId, toolName])
   @@index([sessionId])
   @@map("session_outlier_events")
+}
+
+model ProjectToolBaseline {
+  id          String   @id @default(cuid())
+  projectId   String
+  toolName    String
+  p50Ms       Int
+  p95Ms       Int
+  sampleCount Int
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, toolName])
+  @@index([projectId])
+  @@map("project_tool_baselines")
 }
 
 model Event {
