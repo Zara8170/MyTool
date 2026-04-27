@@ -24,6 +24,7 @@ import { readStdinWithTimeout } from "../lib/stdin.js";
 import {
   detectSlashCommand,
   extractUsageFromTranscript,
+  readTranscriptMessages,
 } from "../lib/transcript.js";
 
 interface ClaudeHookPayload {
@@ -107,6 +108,25 @@ async function runHook(): Promise<void> {
   } catch (err) {
     debugLog(`failed to send event ${event.hookEventName}`, err);
     // 절대 throw하지 않음
+  }
+
+  // 6. Stop 이벤트면 transcript 메시지 전송 (fire-and-forget, 실패해도 hook에 영향 없음)
+  if (event.hookEventName === "Stop") {
+    try {
+      const messages = readTranscriptMessages(event.sessionId, process.cwd());
+      if (messages.length > 0) {
+        await api.sendMessages(
+          apiUrl,
+          config.token,
+          event.projectId,
+          event.sessionId,
+          messages,
+        );
+        debugLog(`transcript sent: ${messages.length} messages`);
+      }
+    } catch (err) {
+      debugLog("failed to send transcript messages", err);
+    }
   }
 }
 

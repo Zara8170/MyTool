@@ -1,10 +1,13 @@
 import type {
   AuthResponse,
   IngestEvent,
+  MessageItem,
   MeResponse,
   Project,
   Organization,
 } from "@mytool/shared";
+
+const USER_AGENT = "mytool-cli";
 
 export class ApiClientError extends Error {
   constructor(
@@ -33,6 +36,7 @@ async function request<T>(
   const url = `${apiUrl.replace(/\/$/, "")}${path}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "User-Agent": USER_AGENT,
   };
   if (opts.token) {
     headers["Authorization"] = `Bearer ${opts.token}`;
@@ -46,7 +50,7 @@ async function request<T>(
     const res = await fetch(url, {
       method: opts.method ?? "GET",
       headers,
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      ...(opts.body !== undefined ? { body: JSON.stringify(opts.body) } : {}),
       signal: controller.signal,
     });
 
@@ -78,14 +82,14 @@ export const api = {
   register(apiUrl: string, body: { email: string; password: string; name?: string }) {
     return request<AuthResponse>(apiUrl, "/api/auth/register", {
       method: "POST",
-      body,
+      body: { ...body, kind: "cli" },
     });
   },
 
   login(apiUrl: string, body: { email: string; password: string }) {
     return request<AuthResponse>(apiUrl, "/api/auth/login", {
       method: "POST",
-      body,
+      body: { ...body, kind: "cli" },
     });
   },
 
@@ -132,5 +136,24 @@ export const api = {
       body: event,
       timeoutMs: 3000,
     });
+  },
+
+  sendMessages(
+    apiUrl: string,
+    token: string,
+    projectId: string,
+    sessionId: string,
+    messages: MessageItem[],
+  ) {
+    return request<{ ok: true; saved: number }>(
+      apiUrl,
+      `/api/projects/${projectId}/sessions/${sessionId}/messages`,
+      {
+        method: "POST",
+        token,
+        body: { messages },
+        timeoutMs: 10_000,
+      },
+    );
   },
 };
