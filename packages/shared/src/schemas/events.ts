@@ -78,6 +78,18 @@ export const IngestEventSchema = z.object({
 });
 export type IngestEvent = z.infer<typeof IngestEventSchema>;
 
+export const MessageItemSchema = z.object({
+  role: z.enum(["human", "assistant"]),
+  content: z.string().max(50_000),
+  timestamp: z.string().datetime(),
+});
+export type MessageItem = z.infer<typeof MessageItemSchema>;
+
+export const MessageBatchSchema = z.object({
+  messages: z.array(MessageItemSchema).max(2000),
+});
+export type MessageBatch = z.infer<typeof MessageBatchSchema>;
+
 /**
  * Truncation 한도. 페이로드 폭주 방지.
  */
