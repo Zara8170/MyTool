@@ -313,8 +313,6 @@ dashboardRoute.get("/:projectId/sessions/:sessionId", async (c) => {
     estimatedCostUsd: totals.cost,
     outlierCount: session.outlierCount,
     outlierRatio: session.outlierRatio,
-    slowestToolName: session.slowestToolName,
-    slowestToolMs: session.slowestToolMs,
     usageByModel: Array.from(modelMap.entries()).map(([model, u]) => ({
       model,
       ...u,
@@ -462,8 +460,6 @@ dashboardRoute.get(
           estimatedCostUsd: tokens.cost,
           outlierCount: s.outlierCount,
           outlierRatio: s.outlierRatio,
-          slowestToolName: s.slowestToolName,
-          slowestToolMs: s.slowestToolMs,
         };
       }),
     });

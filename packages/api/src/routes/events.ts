@@ -148,15 +148,13 @@ eventsRoute.post(
       event.hookEventName === "Stop" ||
       event.hookEventName === "SubagentStop"
     ) {
-      computeSessionOutlierStats(event.sessionId)
+      computeSessionOutlierStats(event.sessionId, event.projectId)
         .then((stats) =>
           prisma.claudeSession.update({
             where: { id: event.sessionId },
             data: {
               outlierCount: stats.outlierCount,
               outlierRatio: stats.outlierRatio,
-              slowestToolName: stats.slowestToolName,
-              slowestToolMs: stats.slowestToolMs,
             },
           }),
         )
