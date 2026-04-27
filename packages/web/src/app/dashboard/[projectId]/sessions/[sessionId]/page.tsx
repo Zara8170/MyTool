@@ -230,6 +230,14 @@ export default async function SessionDetailPage({ params }: PageProps) {
           <span>{new Date(session.startedAt).toLocaleString()}</span>
           {durationSec > 0 && <span>{formatDuration(durationSec)}</span>}
           {session.userName && <span>{session.userName}</span>}
+          {session.messageCount != null && session.messageCount > 0 && (
+            <Link
+              href={`/dashboard/${projectId}/sessions/${sessionId}/transcript`}
+              className="text-accent hover:underline"
+            >
+              대화 내역 {session.messageCount}개 →
+            </Link>
+          )}
         </div>
       </header>
 
