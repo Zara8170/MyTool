@@ -12,6 +12,7 @@ import {
 } from "../lib/events.js";
 import { computeSessionOutlierStats } from "../lib/outlier.js";
 import { updateProjectToolBaselines } from "../lib/baseline.js";
+import { upsertDailyProjectStats } from "../lib/daily-stats.js";
 
 export const eventsRoute = new Hono();
 
@@ -165,6 +166,10 @@ eventsRoute.post(
 
       updateProjectToolBaselines(event.projectId).catch((err) => {
         console.warn("[baseline] update failed", { projectId: event.projectId, err });
+      });
+
+      upsertDailyProjectStats(event.projectId, new Date(event.timestamp)).catch((err) => {
+        console.warn("[daily-stats] update failed", { projectId: event.projectId, err });
       });
     }
 
