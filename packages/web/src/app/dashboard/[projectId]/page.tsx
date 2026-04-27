@@ -70,6 +70,48 @@ export default async function OverviewPage({ params }: PageProps) {
           empty="No agent calls yet."
         />
       </section>
+
+      {summary.outliersByTool.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold mb-3">Slow tools</h2>
+          <p className="text-xs text-muted mb-3">
+            Tool calls exceeding 10× the session median duration
+          </p>
+          <div className="bg-panel border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-muted uppercase tracking-wider border-b">
+                <tr>
+                  <th className="text-left px-4 py-2">Tool</th>
+                  <th className="text-right px-4 py-2">Occurrences</th>
+                  <th className="text-right px-4 py-2">Avg duration</th>
+                  <th className="text-right px-4 py-2">Max duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.outliersByTool
+                  .sort((a, b) => b.occurrences - a.occurrences)
+                  .map((r) => (
+                    <tr
+                      key={r.toolName}
+                      className="border-b last:border-b-0 hover:bg-bg/50 transition-colors"
+                    >
+                      <td className="px-4 py-2 font-mono">{r.toolName}</td>
+                      <td className="px-4 py-2 text-right tabular-nums text-red-400">
+                        {r.occurrences}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-muted">
+                        {formatMs(r.avgDurationMs)}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-muted">
+                        {formatMs(r.maxDurationMs)}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -127,4 +169,10 @@ function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toString();
+}
+
+function formatMs(ms: number): string {
+  if (ms >= 60_000) return `${(ms / 60_000).toFixed(1)}m`;
+  if (ms >= 1_000) return `${(ms / 1_000).toFixed(1)}s`;
+  return `${ms}ms`;
 }

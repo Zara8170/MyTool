@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { serverFetch } from "@/lib/server-api";
 import type { SessionList } from "@mytool/shared";
 
@@ -35,14 +36,23 @@ export default async function SessionsPage({ params }: PageProps) {
                 <th className="text-right px-4 py-2">Events</th>
                 <th className="text-right px-4 py-2">Tokens</th>
                 <th className="text-right px-4 py-2">Cost</th>
+                <th className="text-right px-4 py-2">Outliers</th>
                 <th className="text-left px-4 py-2">Session ID</th>
               </tr>
             </thead>
             <tbody>
               {data.sessions.map((s) => (
-                <tr key={s.id} className="border-b last:border-b-0">
+                <tr
+                  key={s.id}
+                  className="border-b last:border-b-0 hover:bg-bg/50 transition-colors"
+                >
                   <td className="px-4 py-2 whitespace-nowrap">
-                    {new Date(s.startedAt).toLocaleString()}
+                    <Link
+                      href={`/dashboard/${projectId}/sessions/${s.id}`}
+                      className="hover:text-accent"
+                    >
+                      {new Date(s.startedAt).toLocaleString()}
+                    </Link>
                   </td>
                   <td className="px-4 py-2">{s.userName ?? "—"}</td>
                   <td className="px-4 py-2 text-right tabular-nums">
@@ -53,6 +63,15 @@ export default async function SessionsPage({ params }: PageProps) {
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">
                     ${s.estimatedCostUsd.toFixed(4)}
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums">
+                    {s.outlierCount == null ? (
+                      <span className="text-muted">—</span>
+                    ) : s.outlierCount === 0 ? (
+                      <span className="text-muted">0</span>
+                    ) : (
+                      <span className="text-red-400">{s.outlierCount}</span>
+                    )}
                   </td>
                   <td className="px-4 py-2 font-mono text-xs text-muted">
                     {s.id.slice(0, 12)}…

@@ -27,6 +27,14 @@ export const DashboardSummarySchema = z.object({
       callCount: z.number().int(),
     }),
   ),
+  outliersByTool: z.array(
+    z.object({
+      toolName: z.string(),
+      occurrences: z.number().int(),
+      avgDurationMs: z.number().int(),
+      maxDurationMs: z.number().int(),
+    }),
+  ),
 });
 export type DashboardSummary = z.infer<typeof DashboardSummarySchema>;
 
@@ -72,6 +80,8 @@ export const SessionListItemSchema = z.object({
   inputTokens: z.number().int(),
   outputTokens: z.number().int(),
   estimatedCostUsd: z.number(),
+  outlierCount: z.number().int().nullable(),
+  outlierRatio: z.number().nullable(),
 });
 export type SessionListItem = z.infer<typeof SessionListItemSchema>;
 
@@ -80,3 +90,55 @@ export const SessionListSchema = z.object({
   total: z.number().int(),
 });
 export type SessionList = z.infer<typeof SessionListSchema>;
+
+export const UsageBreakdownItemSchema = z.object({
+  model: z.string(),
+  inputTokens: z.number().int(),
+  outputTokens: z.number().int(),
+  cacheReadInputTokens: z.number().int(),
+  cacheCreationInputTokens: z.number().int(),
+  estimatedCostUsd: z.number(),
+  isSubagent: z.boolean(),
+});
+export type UsageBreakdownItem = z.infer<typeof UsageBreakdownItemSchema>;
+
+export const SessionDetailSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  userName: z.string().nullable(),
+  projectId: z.string(),
+  startedAt: z.string().datetime(),
+  endedAt: z.string().datetime().nullable(),
+  eventCount: z.number().int(),
+  inputTokens: z.number().int(),
+  outputTokens: z.number().int(),
+  cacheReadInputTokens: z.number().int(),
+  cacheCreationInputTokens: z.number().int(),
+  estimatedCostUsd: z.number(),
+  usageByModel: z.array(UsageBreakdownItemSchema),
+});
+export type SessionDetail = z.infer<typeof SessionDetailSchema>;
+
+export const EventItemSchema = z.object({
+  id: z.string(),
+  hookEventName: z.string(),
+  toolName: z.string().nullable(),
+  toolInput: z.string().nullable(),
+  toolResponse: z.string().nullable(),
+  exitCode: z.number().int().nullable(),
+  isSkillCall: z.boolean(),
+  skillName: z.string().nullable(),
+  isAgentCall: z.boolean(),
+  agentType: z.string().nullable(),
+  agentDesc: z.string().nullable(),
+  isSlashCommand: z.boolean(),
+  slashCommandName: z.string().nullable(),
+  timestamp: z.string().datetime(),
+});
+export type EventItem = z.infer<typeof EventItemSchema>;
+
+export const EventListSchema = z.object({
+  events: z.array(EventItemSchema),
+  total: z.number().int(),
+});
+export type EventList = z.infer<typeof EventListSchema>;
