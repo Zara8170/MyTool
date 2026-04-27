@@ -114,6 +114,7 @@ model Project {
   usageRecords UsageRecord[]
   outlierEvents SessionOutlierEvent[]
   toolBaselines ProjectToolBaseline[]
+  dailyStats   DailyProjectStats[]
 
   @@unique([orgId, slug])
   @@map("projects")
@@ -241,6 +242,29 @@ model UsageRecord {
   @@index([projectId, recordedAt])
   @@index([userId, recordedAt])
   @@map("usage_records")
+}
+
+model DailyProjectStats {
+  id                  String   @id @default(cuid())
+  projectId           String
+  date                DateTime @db.Date
+
+  sessionCount        Int      @default(0)
+  activeUsers         Int      @default(0)
+  inputTokens         BigInt   @default(0)
+  outputTokens        BigInt   @default(0)
+  cacheReadTokens     BigInt   @default(0)
+  cacheCreationTokens BigInt   @default(0)
+  estimatedCostUsd    Decimal  @default(0) @db.Decimal(14, 6)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, date])
+  @@index([projectId, date])
+  @@map("daily_project_stats")
 }
 
 model Message {
