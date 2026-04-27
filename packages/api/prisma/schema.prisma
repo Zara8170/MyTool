@@ -130,9 +130,9 @@ model ClaudeSession {
   outlierCount    Int?    // 이상치 툴 호출 횟수
   outlierRatio    Float?  // 이상치 비율 (0.0–1.0)
 
-  outlierEvents SessionOutlierEvent[]
   createdAt DateTime  @default(now())
 
+  outlierEvents SessionOutlierEvent[]
   project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   events       Event[]
@@ -142,6 +142,23 @@ model ClaudeSession {
   @@index([projectId, startedAt])
   @@index([userId])
   @@map("claude_sessions")
+}
+
+model SessionOutlierEvent {
+  id         String   @id @default(cuid())
+  sessionId  String
+  projectId  String
+  toolName   String
+  durationMs Int
+  medianMs   Int
+  createdAt  DateTime @default(now())
+
+  session ClaudeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, toolName])
+  @@index([sessionId])
+  @@map("session_outlier_events")
 }
 
 model Event {
@@ -207,23 +224,6 @@ model UsageRecord {
   @@index([projectId, recordedAt])
   @@index([userId, recordedAt])
   @@map("usage_records")
-}
-
-model SessionOutlierEvent {
-  id         String   @id @default(cuid())
-  sessionId  String
-  projectId  String
-  toolName   String
-  durationMs Int
-  medianMs   Int
-  createdAt  DateTime @default(now())
-
-  session ClaudeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@index([projectId, toolName])
-  @@index([sessionId])
-  @@map("session_outlier_events")
 }
 
 model Message {
