@@ -22,7 +22,7 @@ export async function computeSessionOutlierStats(
     }),
     prisma.event.findMany({
       where: { sessionId, hookEventName: "PostToolUse" },
-      select: { timestamp: true },
+      select: { toolName: true, timestamp: true },
       orderBy: { timestamp: "asc" },
     }),
   ]);
@@ -31,20 +31,34 @@ export async function computeSessionOutlierStats(
     return { outlierCount: 0, outlierRatio: 0 };
   }
 
-  const usedPostIndices = new Set<number>();
+  // 툴 이름별 버킷으로 매칭 — 서브에이전트 병렬 실행 시 다른 툴의 Post와 교차 매칭되는 것을 방지
+  const postBuckets = new Map<string, { timestamp: Date }[]>();
+  for (const post of postEvents) {
+    const key = post.toolName ?? "__none__";
+    if (!postBuckets.has(key)) postBuckets.set(key, []);
+    postBuckets.get(key)!.push(post);
+  }
+
+  const usedPostIndices = new Map<string, Set<number>>();
   const pairs: { toolName: string | null; durationMs: number }[] = [];
 
   for (const pre of preEvents) {
+    const key = pre.toolName ?? "__none__";
+    const bucket = postBuckets.get(key) ?? [];
+    if (!usedPostIndices.has(key)) usedPostIndices.set(key, new Set());
+    const used = usedPostIndices.get(key)!;
     const preTime = pre.timestamp.getTime();
-    for (let i = 0; i < postEvents.length; i++) {
-      if (usedPostIndices.has(i)) continue;
-      const postTime = postEvents[i]!.timestamp.getTime();
+
+    for (let i = 0; i < bucket.length; i++) {
+      if (used.has(i)) continue;
+      const postTime = bucket[i]!.timestamp.getTime();
       if (postTime >= preTime) {
         pairs.push({ toolName: pre.toolName, durationMs: postTime - preTime });
-        usedPostIndices.add(i);
+        used.add(i);
         break;
       }
     }
+    // 매칭된 Post가 없는 Pre는 건너뜀 — 가짜 1500ms 기본값으로 중앙값이 왜곡되는 것을 방지
   }
 
   if (pairs.length === 0) {
