@@ -152,10 +152,8 @@ dashboardRoute.get(
 /**
  * GET /api/projects/:projectId/dashboard/usage
  * 일별 토큰·비용 시계열.
- *
- * Postgres의 date_trunc 대신, JS에서 일별 버킷팅합니다.
- * 일별 사용 레코드 수가 많지 않으므로 (수백~수천) 충분히 빠르고,
- * Prisma의 type-safety를 유지할 수 있습니다.
+ * 오늘 이전: daily_project_stats에서 읽기 (pre-aggregated)
+ * 오늘: usageRecord에서 실시간 집계
  */
 dashboardRoute.get(
   "/:projectId/dashboard/usage",
@@ -163,68 +161,68 @@ dashboardRoute.get(
   async (c) => {
     const projectId = c.req.param("projectId");
     const userId = c.get("userId");
-    const { from, to, userId: filterUserId } = await resolveDateRange(
+    const { from, to } = await resolveDateRange(
       projectId,
       userId,
       c.req.valid("query"),
     );
 
-    const records = await prisma.usageRecord.findMany({
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    // 오늘 이전: daily_project_stats에서 읽기
+    const dailyRows = await prisma.dailyProjectStats.findMany({
       where: {
         projectId,
-        recordedAt: { gte: from, lte: to },
-        ...(filterUserId ? { userId: filterUserId } : {}),
+        date: { gte: from, lt: today },
       },
-      select: {
-        recordedAt: true,
-        inputTokens: true,
-        outputTokens: true,
-        cacheReadInputTokens: true,
-        cacheCreationInputTokens: true,
-        estimatedCostUsd: true,
-      },
-      orderBy: { recordedAt: "asc" },
+      orderBy: { date: "asc" },
     });
 
-    // 일별 버킷
-    const buckets = new Map<
-      string,
-      {
-        inputTokens: number;
-        outputTokens: number;
-        cacheReadTokens: number;
-        cacheCreationTokens: number;
-        estimatedCostUsd: number;
-      }
-    >();
+    // 오늘: 실시간 집계
+    const todayEnd = new Date(today);
+    todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
+    const todayUsage =
+      to >= today
+        ? await prisma.usageRecord.aggregate({
+            where: { projectId, recordedAt: { gte: today, lt: todayEnd } },
+            _sum: {
+              inputTokens: true,
+              outputTokens: true,
+              cacheReadInputTokens: true,
+              cacheCreationInputTokens: true,
+              estimatedCostUsd: true,
+            },
+          })
+        : null;
 
-    for (const r of records) {
-      const dateKey = r.recordedAt.toISOString().slice(0, 10);
-      const bucket = buckets.get(dateKey) ?? {
-        inputTokens: 0,
-        outputTokens: 0,
-        cacheReadTokens: 0,
-        cacheCreationTokens: 0,
-        estimatedCostUsd: 0,
-      };
-      bucket.inputTokens += r.inputTokens;
-      bucket.outputTokens += r.outputTokens;
-      bucket.cacheReadTokens += r.cacheReadInputTokens;
-      bucket.cacheCreationTokens += r.cacheCreationInputTokens;
-      bucket.estimatedCostUsd += Number(r.estimatedCostUsd);
-      buckets.set(dateKey, bucket);
-    }
-
-    const series = Array.from(buckets.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, b]) => ({
-        date,
-        inputTokens: b.inputTokens,
-        outputTokens: b.outputTokens,
-        cacheReadTokens: b.cacheReadTokens,
-        cacheCreationTokens: b.cacheCreationTokens,
-        estimatedCostUsd: Math.round(b.estimatedCostUsd * 1_000_000) / 1_000_000,
-      }));
+    const series = [
+      ...dailyRows.map((r) => ({
+        date: r.date.toISOString().slice(0, 10),
+        inputTokens: Number(r.inputTokens),
+        outputTokens: Number(r.outputTokens),
+        cacheReadTokens: Number(r.cacheReadTokens),
+        cacheCreationTokens: Number(r.cacheCreationTokens),
+        estimatedCostUsd:
+          Math.round(Number(r.estimatedCostUsd) * 1_000_000) / 1_000_000,
+      })),
+      ...(todayUsage
+        ? [
+            {
+              date: today.toISOString().slice(0, 10),
+              inputTokens: todayUsage._sum.inputTokens ?? 0,
+              outputTokens: todayUsage._sum.outputTokens ?? 0,
+              cacheReadTokens: todayUsage._sum.cacheReadInputTokens ?? 0,
+              cacheCreationTokens:
+                todayUsage._sum.cacheCreationInputTokens ?? 0,
+              estimatedCostUsd:
+                Math.round(
+                  Number(todayUsage._sum.estimatedCostUsd ?? 0) * 1_000_000,
+                ) / 1_000_000,
+            },
+          ]
+        : []),
+    ];
 
     return c.json({ series });
   },
