@@ -17,8 +17,8 @@ export default async function DashboardLayout({ children, params }: LayoutProps)
 
   try {
     const [me, project] = await Promise.all([
-      serverFetch<MeResponse>("/api/auth/me"),
-      serverFetch<Project>(`/api/projects/${projectId}`),
+      serverFetch<MeResponse>("/api/auth/me", { next: { revalidate: 60 } }),
+      serverFetch<Project>(`/api/projects/${projectId}`, { next: { revalidate: 30 } }),
     ]);
 
     return (
@@ -44,7 +44,8 @@ export default async function DashboardLayout({ children, params }: LayoutProps)
             />
           </nav>
 
-          <div className="mt-auto pt-4">
+          <div className="mt-auto pt-4 flex flex-col gap-2">
+            <SidebarLink href="/settings" label="Settings" />
             <LogoutButton />
           </div>
         </aside>
