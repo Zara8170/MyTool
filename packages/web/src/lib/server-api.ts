@@ -1,7 +1,13 @@
 import "server-only";
-import { getAuthToken } from "./auth.js";
+import { getAuthToken } from "./auth";
 
-const API_URL = process.env.API_URL ?? "http://localhost:3001";
+// Vercel 배포 시: VERCEL_URL이 자동 설정됨 (자신의 API routes 호출)
+// 로컬 개발 시: API_URL 또는 Next.js dev server URL 사용
+function getApiUrl(): string {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return process.env.API_URL ?? "http://localhost:18101";
+}
+const API_URL = getApiUrl();
 
 export class ServerApiError extends Error {
   constructor(
@@ -13,19 +19,22 @@ export class ServerApiError extends Error {
   }
 }
 
+type NextFetchConfig = { revalidate?: number | false; tags?: string[] };
+
 export async function serverFetch<T>(
   path: string,
-  init: RequestInit = {},
+  init: Omit<RequestInit, "next"> & { next?: NextFetchConfig } = {},
 ): Promise<T> {
+  const { next, ...restInit } = init;
   const token = await getAuthToken();
-  const headers = new Headers(init.headers);
+  const headers = new Headers(restInit.headers);
   headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const res = await fetch(`${API_URL}${path}`, {
-    ...init,
+    ...restInit,
     headers,
-    cache: "no-store",
+    ...(next ? { next } : { cache: "no-store" }),
   });
 
   if (!res.ok) {

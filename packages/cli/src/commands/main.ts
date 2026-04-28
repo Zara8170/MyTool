@@ -103,7 +103,7 @@ async function loginOnlyFlow(apiUrl: string, explicitApiUrl?: string): Promise<v
     const auth =
       action === "login"
         ? await api.login(apiUrl, { email, password: pw })
-        : await api.register(apiUrl, { email, password: pw, name });
+        : await api.register(apiUrl, { email, password: pw, ...(name ? { name } : {}) });
     writeConfig({
       token: auth.token,
       user: auth.user,
