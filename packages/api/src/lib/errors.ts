@@ -9,6 +9,7 @@ export type ErrorCode =
   | "NOT_FOUND"
   | "CONFLICT"
   | "GONE"
+  | "RATE_LIMITED"
   | "INTERNAL_ERROR";
 
 export interface ApiErrorBody {
@@ -49,6 +50,10 @@ export function notFound(message = "Not found"): ApiError {
 
 export function conflict(message = "Conflict"): ApiError {
   return new ApiError(409, "CONFLICT", message);
+}
+
+export function rateLimited(message = "Too many requests"): ApiError {
+  return new ApiError(429, "RATE_LIMITED", message);
 }
 
 export function validationError(details: unknown): ApiError {

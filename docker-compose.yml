@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mytool}
       POSTGRES_DB: mytool
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,11 +29,11 @@ services:
     environment:
       DATABASE_URL: postgresql://mytool:${POSTGRES_PASSWORD:-mytool}@postgres:5432/mytool
       JWT_SECRET: ${JWT_SECRET}
-      WEB_URL: ${WEB_URL:-http://localhost:3000}
-      PORT: 3001
+      WEB_URL: ${WEB_URL:-http://localhost:18100}
+      PORT: 18101
       NODE_ENV: production
     ports:
-      - "3001:3001"
+      - "18101:18101"
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,12 +47,12 @@ services:
       dockerfile: packages/web/Dockerfile
     container_name: mytool-web
     environment:
-      API_URL: http://api:3001
-      NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3001}
+      API_URL: http://api:18101
+      NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:18101}
       AUTH_SECRET: ${AUTH_SECRET}
       NODE_ENV: production
     ports:
-      - "3000:3000"
+      - "18100:18100"
     depends_on:
       - api
     restart: unless-stopped

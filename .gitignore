@@ -42,3 +42,7 @@ packages/api/prisma/migrations/dev.db*
 
 # Local mytool data (CLI integration tests)
 .mytool/
+.gstack/
+
+# Personal Claude Code settings (hooks etc.)
+.claude/

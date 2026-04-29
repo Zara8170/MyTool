@@ -1,15 +1,17 @@
 // mytool — Prisma schema
 //
-// 자체호스팅 PostgreSQL을 단일 DATABASE_URL로 사용합니다.
-// Supabase의 DIRECT_URL 분리는 사용하지 않습니다 (자체호스팅 단순화).
+// DATABASE_URL: 런타임용 (Supabase Supavisor pooler, port 6543)
+// DIRECT_URL: 마이그레이션 전용 (Supabase direct connection, port 5432)
+// 자체호스팅 시 DIRECT_URL을 생략하면 DATABASE_URL만 사용.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================================

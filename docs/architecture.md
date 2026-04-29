@@ -69,8 +69,10 @@ mytool은 4개 패키지로 구성된 pnpm 모노레포입니다.
 ```
 POST   /api/auth/register      회원가입 + 개인 org 자동 생성
 POST   /api/auth/login         로그인
-DELETE /api/auth/session       로그아웃 (token revoke)
+DELETE /api/auth/session       현재 토큰 revoke (logout)
 GET    /api/auth/me            현재 사용자 + 소속 org
+GET    /api/auth/sessions      내 모든 활성/비활성 토큰 목록
+DELETE /api/auth/sessions/:id  특정 토큰 revoke (다른 디바이스 로그아웃)
 
 POST   /api/orgs                  새 org 생성
 GET    /api/orgs/:id              org 정보
@@ -79,7 +81,7 @@ GET    /api/orgs/:id/projects     org의 프로젝트 목록
 POST   /api/projects              새 프로젝트 생성
 GET    /api/projects/:id          프로젝트 정보
 
-POST   /api/events                Hook 이벤트 수집 (고빈도)
+POST   /api/events                Hook 이벤트 수집 (고빈도, rate-limited)
 
 GET    /api/projects/:id/dashboard/summary    KPI 카드 + Top skills/agents
 GET    /api/projects/:id/dashboard/usage      일별 토큰·비용 시계열
@@ -95,7 +97,7 @@ GET    /api/projects/:id/dashboard/sessions   세션 목록
 - **events**: 모든 hook 발화 (`isSkillCall` 등 파생 필드 포함)
 - **usage_records**: 토큰·비용 (Stop/SubagentStop 시점에 1건씩)
 - **messages**: 세션 전사 (선택, 50000자 truncate)
-- **cli_tokens**: JWT의 SHA-256 해시 (revocation용)
+- **cli_tokens**: JWT의 SHA-256 해시 + `kind`(WEB/CLI) + `label` + `lastUsedAt` (revocation/세션 관리용)
 
 자세한 정의: `packages/api/prisma/schema.prisma`
 
@@ -109,12 +111,34 @@ GET    /api/projects/:id/dashboard/sessions   세션 목록
 
 ## 보안
 
+### 인증 기본
 - **비밀번호**: bcrypt 12 rounds로 해시 저장
 - **JWT 비밀키**: 최소 32자 환경변수 (`JWT_SECRET`)
-- **JWT 유효기간**: 1년 (CLI 편의), 즉시 무효화는 `cli_tokens` 테이블의 `revokedAt`
 - **CliToken**: 평문 JWT 저장 안 함, SHA-256 해시만 저장
 - **CORS**: `WEB_URL` 환경변수로 명시한 출처만 허용
 - **httpOnly 쿠키**: Web에서는 JavaScript에서 토큰 접근 불가
+
+### 토큰 종류 분리 (Web vs CLI)
+- **Web 세션**: 7일 만료. 쿠키 maxAge도 동일하게 7일.
+- **CLI 토큰**: 365일 만료. 매번 로그인하지 않아도 됨.
+- 클라이언트는 로그인 시 `kind: "web" | "cli"`를 명시. JWT에도 kind 클레임이 들어감.
+- 레거시(누락) 토큰은 안전하게 web으로 간주.
+- 즉시 무효화는 `cli_tokens.revokedAt` 컬럼 — DB UPDATE로 끝.
+
+### Rate limiting
+메모리 기반 sliding-window 미들웨어 (`middleware/rate-limit.ts`).
+- `/api/auth/login`, `/api/auth/register`: IP당 분당 5회 (무차별 대입 방어)
+- `/api/auth/me`: 사용자당 분당 60회
+- `/api/events`: 사용자당 분당 600회 (정상 hook 발화의 ~10배 여유)
+
+단일 프로세스에서만 동작합니다. 다중 인스턴스 배포 시 Redis 등 공유 저장소로 교체 필요.
+
+### 세션 관리 UI
+- `/settings/sessions` — 사용자가 자신의 토큰 목록 조회 가능 (web/cli 구분 표시)
+- 각 토큰: 라벨(자동 감지된 브라우저/CLI 이름), 생성 시각, 마지막 사용 시각, 만료 시각
+- "이 디바이스" 표시 — 현재 사용 중인 토큰 식별
+- Revoke 버튼 — 즉시 다른 디바이스 로그아웃
+- `lastUsedAt`는 60초 throttle로 갱신 (모든 요청마다 DB write 방지)
 
 ## 확장 포인트 (MVP 이후)
 
@@ -123,6 +147,9 @@ GET    /api/projects/:id/dashboard/sessions   세션 목록
 - AI 인사이트 (반복 패턴 → 스킬 추천)
 - WebSocket 실시간 푸시 (현재는 페이지 새로고침)
 - OpenTelemetry 통합 (조직용)
+- 비밀번호 리셋 / 이메일 검증 (현재는 미구현)
+- CSRF 토큰 (현재는 SameSite=Lax 단독)
+- 다중 인스턴스 배포 시 Redis 기반 rate limit
 
 ## 로컬 개발
 

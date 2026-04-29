@@ -27,9 +27,12 @@ export default function LoginPage() {
           ...(mode === "register" && name ? { name } : {}),
         }),
       });
-      const body = (await res.json()) as { error?: string; ok?: boolean };
+      const body = (await res.json()) as {
+        error?: { code: string; message: string };
+        ok?: boolean;
+      };
       if (!res.ok) {
-        setError(body.error ?? "Authentication failed");
+        setError(body.error?.message ?? "Authentication failed");
         return;
       }
       router.push("/");
