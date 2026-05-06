@@ -30,12 +30,42 @@ pnpm db:migrate
 # 5. 전체 개발 서버 실행
 pnpm dev
 # → API:  http://localhost:3001
-# → Web:  http://localhost:3000
+# → Web:  http://localhost:18100
 
 # 6. CLI 로컬 테스트
 pnpm --filter @mytool/cli build
 node packages/cli/dist/index.js --api-url http://localhost:3001
 ```
+
+## 개별 실행 (프론트엔드 / 백엔드 분리)
+
+전체 스택 대신 프론트엔드나 백엔드만 따로 띄울 수 있습니다.
+
+### 백엔드 (API)
+
+```bash
+# 개발 서버 (hot-reload)
+pnpm --filter @mytool/api dev
+# → http://localhost:3001
+
+# 프로덕션 빌드 후 실행
+pnpm --filter @mytool/api build
+pnpm --filter @mytool/api start
+```
+
+### 프론트엔드 (Web)
+
+```bash
+# 개발 서버 (hot-reload)
+pnpm --filter @mytool/web dev
+# → http://localhost:18100
+
+# 프로덕션 빌드 후 실행
+pnpm --filter @mytool/web build
+pnpm --filter @mytool/web start
+```
+
+> 프론트엔드는 백엔드 API에 의존합니다. 백엔드와 DB가 먼저 실행 중이어야 합니다.
 
 ## Self-hosting (production)
 
