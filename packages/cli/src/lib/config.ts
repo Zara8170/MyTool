@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
-const DEFAULT_API_URL = "https://mytool-git-main-zara8170s-projects.vercel.app";
+const DEFAULT_API_URL = "https://claudemytool.vercel.app";
 
 export interface UserConfig {
   /** API JWT 토큰 */
