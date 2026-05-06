@@ -1,39 +1,42 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthToken } from "@/lib/auth";
-import { serverFetch } from "@/lib/server-api";
-import type { MeResponse } from "@mytool/shared";
+import { verifyJwt } from "@/lib/jwt";
+import { prisma } from "@/lib/db";
 import { LogoutButton } from "@/components/logout-button";
-
-interface Project {
-  id: string;
-  name: string;
-  slug: string;
-}
 
 export default async function SettingsPage() {
   const token = await getAuthToken();
   if (!token) redirect("/login");
 
-  const me = await serverFetch<MeResponse>("/api/auth/me");
+  let userId: string;
+  try {
+    const payload = await verifyJwt(token);
+    userId = payload.sub;
+  } catch {
+    redirect("/login");
+  }
 
-  const projectsByOrg = await Promise.all(
-    me.organizations.map(async (org) => {
-      const data = await serverFetch<{ projects: Project[] }>(
-        `/api/orgs/${org.id}/projects`,
-      );
-      return { org, projects: data.projects };
-    }),
-  );
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      memberships: {
+        include: {
+          org: { include: { projects: true } },
+        },
+      },
+    },
+  });
+  if (!user) redirect("/login");
 
-  const allProjects = projectsByOrg.flatMap((x) => x.projects);
+  const allProjects = user.memberships.flatMap((m) => m.org.projects);
 
   return (
     <main className="max-w-2xl mx-auto p-8 space-y-6">
       <header className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-muted text-sm">{me.email}</p>
+          <p className="text-muted text-sm">{user.email}</p>
         </div>
         <LogoutButton />
       </header>
@@ -76,13 +79,13 @@ export default async function SettingsPage() {
       <section className="bg-panel border rounded-lg p-4">
         <h2 className="text-sm font-semibold mb-3">Your organizations</h2>
         <ul className="space-y-1 text-sm">
-          {me.organizations.map((o) => (
+          {user.memberships.map((m) => (
             <li
-              key={o.id}
+              key={m.id}
               className="flex justify-between border-b last:border-b-0 pb-1 last:pb-0"
             >
-              <span>{o.name}</span>
-              <span className="text-muted text-xs">{o.role}</span>
+              <span>{m.org.name}</span>
+              <span className="text-muted text-xs">{m.role}</span>
             </li>
           ))}
         </ul>
