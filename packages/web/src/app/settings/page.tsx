@@ -47,14 +47,19 @@ export default async function SettingsPage() {
           <h2 className="text-sm font-semibold mb-3">Projects</h2>
           <ul className="space-y-1">
             {allProjects.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} className="flex justify-between items-center py-1">
                 <Link
                   href={`/dashboard/${p.id}`}
-                  className="flex justify-between items-center text-sm hover:text-accent py-1"
+                  className="text-sm hover:text-accent flex-1"
                 >
-                  <span>{p.name}</span>
-                  <span className="text-muted text-xs">Dashboard →</span>
+                  {p.name}
                 </Link>
+                <div className="flex items-center gap-3">
+                  <Link href={`/dashboard/${p.id}`} className="text-muted text-xs hover:text-accent">
+                    Dashboard →
+                  </Link>
+                  <DeleteProjectButton projectId={p.id} projectName={p.name} />
+                </div>
               </li>
             ))}
           </ul>
