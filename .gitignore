@@ -41,10 +41,10 @@ coverage/
 packages/api/prisma/migrations/dev.db*
 
 # Local mytool data (CLI integration tests)
-.mytool/
+.mytool/*
 !.mytool/project.json
 .gstack/
 
 # Personal Claude Code settings (hooks etc.)
-.claude/
+.claude/*
 !.claude/settings.json
