@@ -35,8 +35,7 @@ export default function LoginPage() {
         setError(body.error?.message ?? "Authentication failed");
         return;
       }
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
