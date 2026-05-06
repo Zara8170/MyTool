@@ -1,15 +1,25 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
-import { handleRouteError, forbidden, notFound } from "@/lib/api-errors";
+import { getAuthToken } from "@/lib/auth";
+import { verifyJwt } from "@/lib/jwt";
+import { handleRouteError, forbidden, notFound, unauthorized } from "@/lib/api-errors";
 
 interface RouteContext {
   params: Promise<{ projectId: string }>;
 }
 
-export async function DELETE(req: Request, context: RouteContext): Promise<NextResponse> {
+export async function DELETE(_req: Request, context: RouteContext): Promise<NextResponse> {
   try {
-    const { userId } = await requireAuth(req);
+    const token = await getAuthToken();
+    if (!token) throw unauthorized("Not authenticated");
+    let userId: string;
+    try {
+      const payload = await verifyJwt(token);
+      userId = payload.sub;
+    } catch {
+      throw unauthorized("Invalid token");
+    }
     const { projectId } = await context.params;
 
     const project = await prisma.project.findUnique({
