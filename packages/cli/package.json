@@ -4,7 +4,7 @@
   "description": "Claude Code observability CLI",
   "type": "module",
   "bin": {
-    "mytool": "./dist/index.js"
+    "mytool": "dist/index.js"
   },
   "main": "./dist/index.js",
   "files": [
