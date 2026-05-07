@@ -195,7 +195,6 @@ export async function getSessionList(projectId: string, userId: string, limit = 
         startedAt: s.startedAt.toISOString(), endedAt: s.endedAt?.toISOString() ?? null,
         eventCount: s._count.events, inputTokens: tokens.inputTokens,
         outputTokens: tokens.outputTokens, estimatedCostUsd: tokens.cost,
-        outlierCount: s.outlierCount, outlierRatio: s.outlierRatio,
       };
     }),
   };
