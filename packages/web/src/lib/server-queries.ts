@@ -4,6 +4,18 @@ import { getAuthToken } from "./auth";
 import { verifyJwt, hashToken } from "./jwt";
 import { prisma } from "./db";
 
+// 30-second in-memory cache for today's usage aggregate.
+// Keyed by projectId. Only works on a single-process server.
+type TodayUsageData = {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  estimatedCostUsd: number;
+};
+const todayUsageCache = new Map<string, { data: TodayUsageData; expiresAt: number }>();
+const TODAY_CACHE_TTL_MS = 30_000;
+
 // Returns userId, redirects to /login if token missing/invalid
 export async function getRequiredUserId(): Promise<string> {
   const token = await getAuthToken();
