@@ -99,14 +99,6 @@ export async function getDashboardSummary(projectId: string, userId: string) {
       }),
     ]);
 
-  const outliersByToolRaw = await prisma.sessionOutlierEvent.groupBy({
-    by: ["toolName"],
-    where: { projectId, createdAt: { gte: from, lte: to } },
-    _count: { id: true },
-    _avg: { durationMs: true },
-    _max: { durationMs: true },
-  });
-
   const failMap = new Map(
     topSkillFailsRaw.filter((r) => r.skillName).map((r) => [r.skillName!, r._count._all]),
   );

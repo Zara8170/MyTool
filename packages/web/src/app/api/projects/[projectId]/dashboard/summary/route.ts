@@ -105,27 +105,6 @@ export async function GET(
         }),
       ]);
 
-    const outlierSessionFilter = filterUserId
-      ? {
-          sessionId: {
-            in: (
-              await prisma.claudeSession.findMany({
-                where: { projectId, userId: filterUserId },
-                select: { id: true },
-              })
-            ).map((s) => s.id),
-          },
-        }
-      : {};
-
-    const outliersByToolRaw = await prisma.sessionOutlierEvent.groupBy({
-      by: ["toolName"],
-      where: { projectId, createdAt: { gte: from, lte: to }, ...outlierSessionFilter },
-      _count: { id: true },
-      _avg: { durationMs: true },
-      _max: { durationMs: true },
-    });
-
     const failMap = new Map(
       topSkillFailsRaw.filter((r) => r.skillName).map((r) => [r.skillName!, r._count._all]),
     );
@@ -153,12 +132,6 @@ export async function GET(
       topAgentTypes: topAgentsRaw
         .filter((r) => r.agentType)
         .map((r) => ({ agentType: r.agentType!, callCount: r._count._all })),
-      outliersByTool: outliersByToolRaw.map((r) => ({
-        toolName: r.toolName,
-        occurrences: r._count.id,
-        avgDurationMs: Math.round(r._avg.durationMs ?? 0),
-        maxDurationMs: r._max.durationMs ?? 0,
-      })),
     });
   } catch (err) {
     return handleRouteError(err);
