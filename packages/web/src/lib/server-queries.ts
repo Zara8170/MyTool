@@ -282,6 +282,54 @@ export async function getSessionMessages(sessionId: string) {
   };
 }
 
+// Forgotten skills — used in past 28 days but not in past 7 days, for a specific user
+export async function getForgottenSkills(projectId: string, userId: string, targetUserId: string) {
+  await checkProjectAccess(projectId, userId);
+
+  const now = new Date();
+  const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const [pastSkillsRaw, recentSkillsRaw] = await Promise.all([
+    prisma.event.findMany({
+      where: {
+        projectId,
+        userId: targetUserId,
+        isSkillCall: true,
+        skillName: { not: null },
+        timestamp: { gte: fourWeeksAgo },
+      },
+      select: { skillName: true, timestamp: true },
+      orderBy: { timestamp: "desc" },
+    }),
+    prisma.event.findMany({
+      where: {
+        projectId,
+        userId: targetUserId,
+        isSkillCall: true,
+        skillName: { not: null },
+        timestamp: { gte: oneWeekAgo },
+      },
+      select: { skillName: true },
+      distinct: ["skillName"],
+    }),
+  ]);
+
+  const recentSkills = new Set(recentSkillsRaw.map((e) => e.skillName!));
+
+  const lastUsedMap = new Map<string, string>();
+  for (const e of pastSkillsRaw) {
+    if (!lastUsedMap.has(e.skillName!)) {
+      lastUsedMap.set(e.skillName!, e.timestamp.toISOString());
+    }
+  }
+
+  return [...lastUsedMap.entries()]
+    .filter(([skillName]) => !recentSkills.has(skillName))
+    .map(([skillName, lastUsedAt]) => ({ skillName, lastUsedAt }))
+    .sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt));
+}
+
 // User tokens for settings/sessions page
 export async function getUserTokens(userId: string, currentTokenHash: string) {
   const now = new Date();
