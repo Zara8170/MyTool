@@ -147,12 +147,6 @@ dashboardRoute.get(
       topAgentTypes: topAgentsRaw
         .filter((r) => r.agentType)
         .map((r) => ({ agentType: r.agentType!, callCount: r._count._all })),
-      outliersByTool: outliersByToolRaw.map((r) => ({
-        toolName: r.toolName,
-        occurrences: r._count.id,
-        avgDurationMs: Math.round(r._avg.durationMs ?? 0),
-        maxDurationMs: r._max.durationMs ?? 0,
-      })),
     });
   },
 );
