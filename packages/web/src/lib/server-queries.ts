@@ -232,27 +232,6 @@ export async function getSessionDetail(projectId: string, sessionId: string, use
     { inputTokens: 0, outputTokens: 0, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, cost: 0 },
   );
 
-  const [baselines, sessionOutliers] = await Promise.all([
-    prisma.projectToolBaseline.findMany({ where: { projectId }, select: { toolName: true, p50Ms: true } }),
-    prisma.sessionOutlierEvent.findMany({ where: { sessionId }, select: { toolName: true, medianMs: true } }),
-  ]);
-
-  const baselineMap = new Map(baselines.map((b) => [b.toolName, b.p50Ms]));
-  const sessionMedians = new Map<string, number>();
-  for (const o of sessionOutliers) {
-    if (!sessionMedians.has(o.toolName)) sessionMedians.set(o.toolName, o.medianMs);
-  }
-
-  const baselineComparison = [...sessionMedians.entries()]
-    .filter(([toolName]) => baselineMap.has(toolName))
-    .map(([toolName, sessionMedianMs]) => ({
-      toolName, sessionMedianMs,
-      projectP50Ms: baselineMap.get(toolName)!,
-      ratio: Math.round((sessionMedianMs / baselineMap.get(toolName)!) * 10) / 10,
-    }))
-    .filter((b) => b.ratio > 1.5)
-    .sort((a, b) => b.ratio - a.ratio);
-
   return {
     id: session.id, userId: session.userId, userName: session.user.name,
     projectId: session.projectId,
