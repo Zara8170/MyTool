@@ -10,8 +10,6 @@ import {
   parseEventDerivations,
   truncateToolPayload,
 } from "../lib/events.js";
-import { computeSessionOutlierStats } from "../lib/outlier.js";
-import { updateProjectToolBaselines } from "../lib/baseline.js";
 import { upsertDailyProjectStats } from "../lib/daily-stats.js";
 
 export const eventsRoute = new Hono();
