@@ -5,8 +5,6 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { handleRouteError, notFound, forbidden } from "@/lib/api-errors";
 import { parseEventDerivations, truncateToolPayload } from "@/lib/events-utils";
-import { computeSessionOutlierStats } from "@/lib/outlier";
-import { updateProjectToolBaselines } from "@/lib/baseline";
 import { upsertDailyProjectStats } from "@/lib/daily-stats";
 
 export async function POST(req: Request): Promise<NextResponse> {
