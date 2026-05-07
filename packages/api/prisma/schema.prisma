@@ -114,8 +114,6 @@ model Project {
   sessions     ClaudeSession[]
   events       Event[]
   usageRecords UsageRecord[]
-  outlierEvents SessionOutlierEvent[]
-  toolBaselines ProjectToolBaseline[]
   dailyStats   DailyProjectStats[]
 
   @@unique([orgId, slug])
