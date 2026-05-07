@@ -21,12 +21,35 @@ export function getConfigDir(): string {
   return join(homedir(), ".mytool");
 }
 
+/**
+ * 활성 프로필 이름 — `MYTOOL_PROFILE` 환경변수로 결정.
+ * 미설정 시 `default` (기존 `config.json` 과 동일 경로 유지, 하위호환).
+ *
+ * 영문/숫자/하이픈/언더스코어만 허용 (경로 트래버설 차단).
+ */
+export function getActiveProfile(): string {
+  const raw = process.env.MYTOOL_PROFILE?.trim();
+  if (!raw) return "default";
+  if (!/^[a-zA-Z0-9_-]+$/.test(raw)) {
+    throw new Error(
+      `MYTOOL_PROFILE은 영문/숫자/하이픈/언더스코어만 허용됩니다: ${raw}`,
+    );
+  }
+  return raw;
+}
+
 export function getConfigPath(): string {
-  return join(getConfigDir(), "config.json");
+  const profile = getActiveProfile();
+  // default 프로필은 기존 경로 그대로 (하위호환)
+  const filename = profile === "default" ? "config.json" : `config.${profile}.json`;
+  return join(getConfigDir(), filename);
 }
 
 export function getDebugLogPath(): string {
-  return join(getConfigDir(), "hook-debug.log");
+  const profile = getActiveProfile();
+  // 환경별 디버그 로그 분리. default 는 기존 경로 유지.
+  const filename = profile === "default" ? "hook-debug.log" : `hook-debug.${profile}.log`;
+  return join(getConfigDir(), filename);
 }
 
 export function readConfig(): UserConfig | null {
@@ -58,14 +81,21 @@ export function clearConfig(): void {
 /**
  * API URL 우선순위:
  *   1. 명시적 override (CLI flag)
- *   2. project.json의 apiUrl
- *   3. ~/.mytool/config.json의 apiUrl
- *   4. DEFAULT_API_URL
+ *   2. MYTOOL_API_URL 환경변수
+ *   3. project.json의 apiUrl
+ *   4. ~/.mytool/config(.<profile>).json 의 apiUrl
+ *   5. DEFAULT_API_URL
  */
 export function resolveApiUrl(
   override?: string,
   projectApiUrl?: string,
   configApiUrl?: string,
 ): string {
-  return override ?? projectApiUrl ?? configApiUrl ?? DEFAULT_API_URL;
+  return (
+    override ??
+    process.env.MYTOOL_API_URL ??
+    projectApiUrl ??
+    configApiUrl ??
+    DEFAULT_API_URL
+  );
 }

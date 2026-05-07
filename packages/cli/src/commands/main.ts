@@ -3,7 +3,7 @@ import { input, password as passwordPrompt, select } from "@inquirer/prompts";
 import chalk from "chalk";
 import ora from "ora";
 import { api, ApiClientError } from "../lib/api-client.js";
-import { readConfig, resolveApiUrl, writeConfig } from "../lib/config.js";
+import { getActiveProfile, readConfig, resolveApiUrl, writeConfig } from "../lib/config.js";
 import { injectHooks } from "../lib/hooks-inject.js";
 import { findProjectConfig, writeProjectConfig } from "../lib/project.js";
 
@@ -31,7 +31,11 @@ export async function mainCommand(opts: MainCommandOpts): Promise<void> {
     config?.apiUrl,
   );
 
-  console.log(chalk.bold.cyan("mytool") + chalk.gray(`  →  ${apiUrl}`));
+  const profile = getActiveProfile();
+  const profileTag = profile === "default" ? "" : chalk.yellow(` [${profile}]`);
+  console.log(
+    chalk.bold.cyan("mytool") + profileTag + chalk.gray(`  →  ${apiUrl}`),
+  );
   console.log();
 
   if (!config && !projectInfo) {
@@ -227,7 +231,9 @@ async function printStatus(
   projectRoot: string,
   apiUrl: string,
 ): Promise<void> {
+  const profile = getActiveProfile();
   console.log(chalk.bold("Status"));
+  console.log("  Profile:     ", chalk.cyan(profile));
   console.log("  User:        ", chalk.cyan(config.user.email));
   console.log("  Project root:", chalk.cyan(projectRoot));
   console.log("  API:         ", chalk.cyan(apiUrl));
