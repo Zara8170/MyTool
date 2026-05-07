@@ -58,7 +58,17 @@ async function checkProjectAccess(projectId: string, userId: string) {
 export async function getLayoutData(projectId: string, userId: string) {
   const [user, project] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
-    prisma.project.findUnique({ where: { id: projectId }, select: { id: true, name: true, slug: true, orgId: true } }),
+    prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        orgId: true,
+        syncEnabled: true,
+        harnessEnabled: true,
+      },
+    }),
   ]);
   if (!user || !project) redirect("/login");
   const membership = await prisma.orgMembership.findUnique({

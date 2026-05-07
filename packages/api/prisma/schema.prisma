@@ -70,7 +70,6 @@ model OrgMembership {
 }
 
 /// 토큰의 용도 — Web 세션은 7일, CLI 토큰은 1년 유효.
-/// 분리하는 이유: Web은 짧은 세션이 일반적이지만 CLI는 매번 로그인하기 번거로움.
 enum TokenKind {
   WEB
   CLI
@@ -83,9 +82,9 @@ model CliToken {
   tokenHash  String     @unique
   /// Web 세션 / CLI 토큰 구분
   kind       TokenKind  @default(WEB)
-  /// 사용자 표시용 라벨 (e.g. "Chrome on Windows", "CLI on laptop")
+  /// 사용자 표시용 라벨
   label      String?
-  /// 토큰이 마지막으로 사용된 시각 (분 단위로 throttle, 정확하지 않을 수 있음)
+  /// 토큰이 마지막으로 사용된 시각 (분 단위로 throttle)
   lastUsedAt DateTime?
   revokedAt  DateTime?
   createdAt  DateTime   @default(now())
@@ -110,7 +109,15 @@ model Project {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  org          Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  /// 4축 워크스페이스 토글 (integration-plan §0)
+  /// Skills 축 — sync 페이지·기능 활성 여부
+  syncEnabled    Boolean @default(true)
+  /// Execution 축 — harness·PreToolUse 강제 활성 여부
+  harnessEnabled Boolean @default(false)
+  /// harness.yaml 의 캐시본 (web 에서 편집). 실제 파일은 사용자 PC.
+  harnessConfig  Json?
+
+  org          Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
   sessions     ClaudeSession[]
   events       Event[]
   usageRecords UsageRecord[]
@@ -121,7 +128,6 @@ model Project {
 }
 
 model ClaudeSession {
-  // Claude Code의 session_id를 그대로 사용
   id        String    @id
   projectId String
   userId    String
@@ -147,27 +153,25 @@ model Event {
   sessionId       String
   userId          String
 
-  hookEventName   String    // "PreToolUse" | "PostToolUse" | "Stop" | ...
-  toolName        String?   // "Bash" | "Read" | "Skill" | "Agent" | ...
-  toolInput       String?   // JSON, 2000자 truncate
-  toolResponse    String?   // 2000자 truncate
-  exitCode        Int?
+  hookEventName    String
+  toolName         String?
+  toolInput        String?
+  toolResponse     String?
+  exitCode         Int?
 
-  // 파생 필드 (서버에서 계산)
-  isSkillCall     Boolean   @default(false)
-  skillName       String?
-  isAgentCall     Boolean   @default(false)
-  agentType       String?
-  agentDesc       String?
-  isSlashCommand  Boolean   @default(false)
+  isSkillCall      Boolean   @default(false)
+  skillName        String?
+  isAgentCall      Boolean   @default(false)
+  agentType        String?
+  agentDesc        String?
+  isSlashCommand   Boolean   @default(false)
   slashCommandName String?
-  agentId         String?
+  agentId          String?
 
-  // 디버깅용 원본 페이로드
-  rawPayload      Json?
+  rawPayload       Json?
 
-  timestamp       DateTime
-  createdAt       DateTime  @default(now())
+  timestamp        DateTime
+  createdAt        DateTime  @default(now())
 
   project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   session ClaudeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -232,9 +236,9 @@ model DailyProjectStats {
 model Message {
   id        String   @id @default(cuid())
   sessionId String
-  role      String   // "human" | "assistant" | "tool"
-  content   String   // 50000자 truncate
-  orderIdx  Int      // 세션 내 순서
+  role      String
+  content   String
+  orderIdx  Int
   timestamp DateTime
   createdAt DateTime @default(now())
 

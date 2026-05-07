@@ -21,6 +21,10 @@ export class ApiError extends Error {
   }
 }
 
+export function badRequest(message = "Bad request", details?: unknown): ApiError {
+  return new ApiError(400, "VALIDATION_ERROR", message, details);
+}
+
 export function unauthorized(message = "Authentication required"): ApiError {
   return new ApiError(401, "UNAUTHORIZED", message);
 }

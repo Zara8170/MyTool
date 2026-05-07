@@ -1,5 +1,7 @@
 import { getRequiredUserId, getDashboardSummary, getUsageSeries, getForgottenSkills } from "@/lib/server-queries";
+import { prisma } from "@/lib/db";
 import { TokenUsageChart } from "@/components/token-usage-chart";
+import { WorkspaceToggleCard } from "@/components/workspace-toggle-card";
 
 interface PageProps {
   params: Promise<{ projectId: string }>;
@@ -9,10 +11,14 @@ export default async function OverviewPage({ params }: PageProps) {
   const { projectId } = await params;
   const userId = await getRequiredUserId();
 
-  const [summary, usage, forgottenSkills] = await Promise.all([
+  const [summary, usage, forgottenSkills, projectToggles] = await Promise.all([
     getDashboardSummary(projectId, userId),
     getUsageSeries(projectId, userId),
     getForgottenSkills(projectId, userId, userId),
+    prisma.project.findUnique({
+      where: { id: projectId },
+      select: { syncEnabled: true, harnessEnabled: true },
+    }),
   ]);
 
   return (
@@ -48,6 +54,26 @@ export default async function OverviewPage({ params }: PageProps) {
         <h2 className="text-lg font-semibold mb-3">Daily token usage</h2>
         <div className="bg-panel border rounded-lg p-4">
           <TokenUsageChart series={usage.series} />
+        </div>
+      </section>
+
+      {/* 4축 워크스페이스 토글 (integration-plan §0, PR 1) */}
+      <section>
+        <h2 className="text-lg font-semibold mb-1">Workspace</h2>
+        <p className="text-xs text-muted mb-3">
+          이 프로젝트에서 활성화할 워크스페이스 축을 선택하세요. 토글은 즉시 저장됩니다.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <WorkspaceToggleCard
+            projectId={projectId}
+            axis="sync"
+            initialEnabled={projectToggles?.syncEnabled ?? true}
+          />
+          <WorkspaceToggleCard
+            projectId={projectId}
+            axis="harness"
+            initialEnabled={projectToggles?.harnessEnabled ?? false}
+          />
         </div>
       </section>
 

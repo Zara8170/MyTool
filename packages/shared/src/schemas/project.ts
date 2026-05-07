@@ -27,11 +27,24 @@ export const CreateProjectSchema = z.object({
 });
 export type CreateProjectRequest = z.infer<typeof CreateProjectSchema>;
 
+// 4축 워크스페이스 토글 (integration-plan §0)
 export const ProjectSchema = z.object({
   id: z.string(),
   orgId: z.string(),
   name: z.string(),
   slug: z.string(),
   createdAt: z.string().datetime(),
+  syncEnabled: z.boolean().default(true),
+  harnessEnabled: z.boolean().default(false),
+  harnessConfig: z.unknown().nullable().optional(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
+
+// PATCH /api/projects/:id — 토글·이름 등 부분 업데이트
+export const PatchProjectSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  syncEnabled: z.boolean().optional(),
+  harnessEnabled: z.boolean().optional(),
+  harnessConfig: z.unknown().optional(),
+});
+export type PatchProjectRequest = z.infer<typeof PatchProjectSchema>;
