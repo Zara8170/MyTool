@@ -86,8 +86,6 @@ export async function GET(
           inputTokens: tokens.inputTokens,
           outputTokens: tokens.outputTokens,
           estimatedCostUsd: tokens.cost,
-          outlierCount: s.outlierCount,
-          outlierRatio: s.outlierRatio,
         };
       }),
     });

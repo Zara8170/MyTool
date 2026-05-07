@@ -105,21 +105,6 @@ export async function POST(req: Request): Promise<NextResponse> {
     });
 
     if (event.hookEventName === "Stop" || event.hookEventName === "SubagentStop") {
-      computeSessionOutlierStats(event.sessionId, event.projectId)
-        .then((stats) =>
-          prisma.claudeSession.update({
-            where: { id: event.sessionId },
-            data: { outlierCount: stats.outlierCount, outlierRatio: stats.outlierRatio },
-          }),
-        )
-        .catch((err) => {
-          console.warn("[outlier] aggregation failed", { sessionId: event.sessionId, err });
-        });
-
-      updateProjectToolBaselines(event.projectId).catch((err) => {
-        console.warn("[baseline] update failed", { projectId: event.projectId, err });
-      });
-
       upsertDailyProjectStats(event.projectId, new Date(event.timestamp)).catch((err) => {
         console.warn("[daily-stats] update failed", { projectId: event.projectId, err });
       });
