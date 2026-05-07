@@ -141,39 +141,6 @@ model ClaudeSession {
   @@map("claude_sessions")
 }
 
-model SessionOutlierEvent {
-  id         String   @id @default(cuid())
-  sessionId  String
-  projectId  String
-  toolName   String
-  durationMs Int
-  medianMs   Int
-  createdAt  DateTime @default(now())
-
-  session ClaudeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@index([projectId, toolName])
-  @@index([sessionId])
-  @@map("session_outlier_events")
-}
-
-model ProjectToolBaseline {
-  id          String   @id @default(cuid())
-  projectId   String
-  toolName    String
-  p50Ms       Int
-  p95Ms       Int
-  sampleCount Int
-  updatedAt   DateTime @updatedAt
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@unique([projectId, toolName])
-  @@index([projectId])
-  @@map("project_tool_baselines")
-}
-
 model Event {
   id              String    @id @default(cuid())
   projectId       String
