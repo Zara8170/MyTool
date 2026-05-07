@@ -82,7 +82,7 @@ export default async function OverviewPage({ params }: PageProps) {
                 <li key={s.skillName} className="flex justify-between text-sm border-b last:border-b-0 pb-1.5 last:pb-0">
                   <span className="font-mono">{s.skillName}</span>
                   <span className="text-muted text-xs">
-                    마지막 사용: {new Date(s.lastUsedAt).toLocaleDateString()}
+                    마지막 사용: {new Date(s.lastUsedAt).toLocaleDateString("ko-KR")}
                   </span>
                 </li>
               ))}
