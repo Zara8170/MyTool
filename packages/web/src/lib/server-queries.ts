@@ -117,12 +117,6 @@ export async function getDashboardSummary(projectId: string, userId: string) {
       return { skillName: r.skillName!, callCount: total, failedCount: failed, failureRate: total > 0 ? failed / total : 0 };
     }),
     topAgentTypes: topAgentsRaw.filter((r) => r.agentType).map((r) => ({ agentType: r.agentType!, callCount: r._count._all })),
-    outliersByTool: outliersByToolRaw.map((r) => ({
-      toolName: r.toolName,
-      occurrences: r._count.id,
-      avgDurationMs: Math.round(r._avg.durationMs ?? 0),
-      maxDurationMs: r._max.durationMs ?? 0,
-    })),
   };
 }
 
