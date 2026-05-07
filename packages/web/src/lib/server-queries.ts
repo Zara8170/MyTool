@@ -243,7 +243,6 @@ export async function getSessionDetail(projectId: string, sessionId: string, use
     usageByModel: Array.from(modelMap.entries()).map(([model, u]) => ({
       model, ...u, estimatedCostUsd: Math.round(u.estimatedCostUsd * 1_000_000) / 1_000_000,
     })),
-    baselineComparison,
   };
 }
 
