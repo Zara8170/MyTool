@@ -117,27 +117,6 @@ dashboardRoute.get(
         }),
       ]);
 
-    const outlierSessionFilter = filterUserId
-      ? {
-          sessionId: {
-            in: (
-              await prisma.claudeSession.findMany({
-                where: { projectId, userId: filterUserId },
-                select: { id: true },
-              })
-            ).map((s) => s.id),
-          },
-        }
-      : {};
-
-    const outliersByToolRaw = await prisma.sessionOutlierEvent.groupBy({
-      by: ["toolName"],
-      where: { projectId, createdAt: { gte: from, lte: to }, ...outlierSessionFilter },
-      _count: { id: true },
-      _avg: { durationMs: true },
-      _max: { durationMs: true },
-    });
-
     return c.json({
       totalSessions,
       activeUsers: activeUsersAgg.length,
