@@ -48,11 +48,6 @@ export function SessionGantt({ segments }: Props) {
   const logScale = (ms: number) =>
     Math.log10(ms + 1) / Math.log10(maxDuration + 1);
 
-  // 이상치 경고: median 대비 20배 이상인 작업
-  const durations = [...segments.map((s) => s.durationMs)].sort((a, b) => a - b);
-  const median = durations[Math.floor(durations.length / 2)] ?? 1;
-  const outliers = segments.filter((s) => s.durationMs > median * 20);
-
   const sorted =
     sort === "tokens"
       ? [...segments].sort((a, b) => b.durationMs - a.durationMs)
@@ -84,13 +79,6 @@ export function SessionGantt({ segments }: Props) {
           </button>
         ))}
       </div>
-
-      {/* 이상치 경고 */}
-      {outliers.length > 0 && (
-        <div className="text-xs text-amber-300 bg-amber-950/30 border border-amber-900/50 rounded px-3 py-2">
-          ⚠ {outliers.map((o) => `"${o.label}" (${formatMs(o.durationMs)})`).join(", ")} 작업이 비정상적으로 길어요. 바 너비는 로그 스케일로 표시됩니다.
-        </div>
-      )}
 
       {/* 바 차트 */}
       <div

@@ -99,7 +99,6 @@ function buildRibbonSegments(pairs: PairedResult[]): RibbonSegment[] {
     label: toolLabel(p.pre),
     colorKey: colorKey(p.pre),
     durationMs: p.durationMs,
-    isOutlier: false,
   }));
 }
 
@@ -124,7 +123,6 @@ function buildEventPairRows(
       colorKey: colorKey(event),
       isTool: isPre,
       durationMs: pair?.durationMs ?? null,
-      isOutlier: false,
       elapsedSec: Math.round(
         (new Date(event.timestamp).getTime() - sessionStart) / 1000,
       ),

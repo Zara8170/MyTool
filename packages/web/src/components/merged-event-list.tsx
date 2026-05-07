@@ -8,7 +8,6 @@ export type EventPairRow = {
   colorKey: "read" | "bash" | "edit" | "skill" | "agent" | "other";
   isTool: boolean;
   durationMs: number | null;
-  isOutlier: boolean;
   elapsedSec: number;
   isSkillCall: boolean;
   skillName: string | null;
@@ -49,11 +48,10 @@ const DOT_BG: Record<EventPairRow["colorKey"], string> = {
   other: "bg-gray-500",
 };
 
-type FilterKey = "all" | "outlier" | "slow" | "skill" | "agent" | "bash" | "edit" | "read";
+type FilterKey = "all" | "slow" | "skill" | "agent" | "bash" | "edit" | "read";
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "전체" },
-  { key: "outlier", label: "이상치" },
   { key: "slow", label: "느린 작업 (≥10s)" },
   { key: "skill", label: "Skill" },
   { key: "agent", label: "Agent" },
@@ -67,7 +65,6 @@ function applyFilter(rows: EventPairRow[], filter: FilterKey): EventPairRow[] {
   return rows.filter((row) => {
     if (!row.isTool) return false;
     switch (filter) {
-      case "outlier": return row.isOutlier;
       case "slow": return (row.durationMs ?? 0) >= 10_000;
       case "skill": return row.isSkillCall;
       case "agent": return row.isAgentCall;
@@ -168,11 +165,6 @@ export function MergedEventList({ rows }: Props) {
 
               {/* badges */}
               <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                {row.isOutlier && (
-                  <span className="text-xs px-1.5 py-0.5 rounded border text-red-400 border-red-900/60 bg-red-950/30">
-                    ⚠ 이상치
-                  </span>
-                )}
                 {row.isSkillCall && row.skillName && (
                   <Badge color="amber">skill:{row.skillName}</Badge>
                 )}
