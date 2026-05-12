@@ -8,6 +8,8 @@ export interface AuthVariables {
   userEmail: string;
   /** 현재 요청의 토큰 해시 — 세션 관리 라우트에서 isCurrent 판별용 */
   tokenHash: string;
+  /** PR 3 — 토큰이 묶인 device. 기존 토큰은 null (sync 라우트에서만 필수). */
+  tokenDeviceId: string | null;
 }
 
 declare module "hono" {
@@ -48,7 +50,7 @@ export const authMiddleware = createMiddleware(async (c, next) => {
   const tokenHash = hashToken(token);
   const dbToken = await prisma.cliToken.findUnique({
     where: { tokenHash },
-    select: { revokedAt: true, expiresAt: true },
+    select: { revokedAt: true, expiresAt: true, deviceId: true },
   });
   if (dbToken?.revokedAt) {
     throw unauthorized("Token has been revoked");
@@ -60,6 +62,7 @@ export const authMiddleware = createMiddleware(async (c, next) => {
   c.set("userId", payload.sub);
   c.set("userEmail", payload.email);
   c.set("tokenHash", tokenHash);
+  c.set("tokenDeviceId", dbToken?.deviceId ?? null);
 
   await next();
 

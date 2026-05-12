@@ -9,6 +9,7 @@ import { healthRoute } from "./routes/health.js";
 import { orgsRoute } from "./routes/orgs.js";
 import { projectsRoute } from "./routes/projects.js";
 import { dashboardRoute } from "./routes/dashboard.js";
+import { syncRoute } from "./routes/sync.js";
 
 export function buildApp() {
   const env = getEnv();
@@ -34,6 +35,7 @@ export function buildApp() {
   app.route("/api/projects", projectsRoute);
   // Dashboard는 /api/projects/:id/dashboard/* 경로에 마운트
   app.route("/api/projects", dashboardRoute);
+  app.route("/api/sync", syncRoute);
 
   return app;
 }

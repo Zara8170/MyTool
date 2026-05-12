@@ -5,6 +5,13 @@ import type {
   MeResponse,
   Project,
   Organization,
+  Device,
+  RegisterDeviceRequest,
+  CreateSnapshotRequest,
+  SnapshotSummary,
+  SyncJobSummary,
+  SyncJobWork,
+  ReportJobResultRequest,
 } from "@mytool/shared";
 
 const USER_AGENT = "mytool-cli";
@@ -155,5 +162,133 @@ export const api = {
         timeoutMs: 10_000,
       },
     );
+  },
+
+  // ─── PR 3 — Sync push/pull ─────────────────────────────────────
+
+  registerDevice(apiUrl: string, token: string, body: RegisterDeviceRequest) {
+    return request<Device>(apiUrl, "/api/sync/devices", {
+      method: "POST",
+      token,
+      body,
+    });
+  },
+
+  listDevices(apiUrl: string, token: string) {
+    return request<Device[]>(apiUrl, "/api/sync/devices", { token });
+  },
+
+  createSnapshot(apiUrl: string, token: string, body: CreateSnapshotRequest) {
+    return request<{ id: string; orgId: string; deviceId: string; createdAt: string }>(
+      apiUrl,
+      "/api/sync/snapshots",
+      { method: "POST", token, body, timeoutMs: 30_000 },
+    );
+  },
+
+  /** bundle zip 업로드 — raw bytes (application/zip). */
+  async uploadBundle(
+    apiUrl: string,
+    token: string,
+    snapshotId: string,
+    zipBuffer: Buffer,
+  ): Promise<{ ok: true; size: number }> {
+    const url = `${apiUrl.replace(/\/$/, "")}/api/sync/snapshots/${snapshotId}/bundle`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60_000);
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/zip",
+          "User-Agent": USER_AGENT,
+        },
+        body: zipBuffer,
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        let code = "HTTP_ERROR";
+        let message = `${res.status} ${res.statusText}`;
+        try {
+          const err = (await res.json()) as { error?: { code?: string; message?: string } };
+          if (err.error?.code) code = err.error.code;
+          if (err.error?.message) message = err.error.message;
+        } catch {
+          /* ignore */
+        }
+        throw new ApiClientError(res.status, code, message);
+      }
+      return (await res.json()) as { ok: true; size: number };
+    } finally {
+      clearTimeout(timer);
+    }
+  },
+
+  listSnapshots(apiUrl: string, token: string) {
+    return request<SnapshotSummary[]>(apiUrl, "/api/sync/snapshots", { token });
+  },
+
+  listJobs(
+    apiUrl: string,
+    token: string,
+    opts: { deviceId?: string; status?: string } = {},
+  ) {
+    const qs = new URLSearchParams();
+    if (opts.deviceId) qs.set("deviceId", opts.deviceId);
+    if (opts.status) qs.set("status", opts.status);
+    const query = qs.toString();
+    return request<SyncJobSummary[]>(
+      apiUrl,
+      `/api/sync/jobs${query ? "?" + query : ""}`,
+      { token },
+    );
+  },
+
+  getJob(apiUrl: string, token: string, jobId: string) {
+    return request<SyncJobWork>(apiUrl, `/api/sync/jobs/${jobId}`, {
+      token,
+      timeoutMs: 30_000,
+    });
+  },
+
+  reportJobResult(
+    apiUrl: string,
+    token: string,
+    jobId: string,
+    body: ReportJobResultRequest,
+  ) {
+    return request<SyncJobSummary>(apiUrl, `/api/sync/jobs/${jobId}/result`, {
+      method: "POST",
+      token,
+      body,
+    });
+  },
+
+  /** bundle zip 다운로드 (signed URL 또는 우리 라우트). 응답 buffer 반환. */
+  async downloadBundle(url: string, token: string): Promise<Buffer> {
+    const isOurRoute = url.includes("/api/sync/");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60_000);
+    try {
+      const res = await fetch(url, {
+        headers: isOurRoute
+          ? { Authorization: `Bearer ${token}`, "User-Agent": USER_AGENT }
+          : { "User-Agent": USER_AGENT },
+        redirect: "follow",
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        throw new ApiClientError(
+          res.status,
+          "HTTP_ERROR",
+          `${res.status} ${res.statusText}`,
+        );
+      }
+      const arr = await res.arrayBuffer();
+      return Buffer.from(arr);
+    } finally {
+      clearTimeout(timer);
+    }
   },
 };
