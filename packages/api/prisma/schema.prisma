@@ -32,6 +32,7 @@ model User {
   sessions     ClaudeSession[]
   events       Event[]
   usageRecords UsageRecord[]
+  devices      Device[]
 
   @@map("users")
 }
@@ -48,8 +49,10 @@ model Organization {
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
-  members  OrgMembership[]
-  projects Project[]
+  members   OrgMembership[]
+  projects  Project[]
+  snapshots SyncSnapshot[]
+  syncJobs  SyncJob[]
 
   @@map("organizations")
 }
@@ -89,12 +92,104 @@ model CliToken {
   revokedAt  DateTime?
   createdAt  DateTime   @default(now())
   expiresAt  DateTime
+  /// PR 3 — 이 토큰을 발급받은 device 와의 연결 (sync push/pull 권한 매핑)
+  /// 기존 토큰 호환을 위해 nullable. 새 `mytool sync push` 가 필요시 device 자동 생성·연결.
+  deviceId   String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([userId, revokedAt])
+  @@index([deviceId])
   @@map("cli_tokens")
+}
+
+// ============================================================
+// PR 3 — Sync (push/pull 모델, B 안)
+// ============================================================
+
+/// 사용자가 mytool 을 사용하는 PC 단위 식별자.
+/// 한 사용자가 여러 PC (회사·집·서버 등) 를 쓰는 시나리오를 자연스럽게 지원.
+/// `mytool sync push` 첫 실행 시 자동 생성됨.
+model Device {
+  id         String   @id @default(cuid())
+  userId     String
+  /// 사용자 지정 별명 (예: "desk-home"). 미지정 시 hostname 사용.
+  name       String
+  hostname   String
+  /// "darwin" | "linux" | "win32" 등 process.platform 값
+  platform   String
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokens    CliToken[]
+  snapshots SyncSnapshot[] @relation("DeviceSnapshots")
+  // 이 device 가 target 인 sync job 들
+  inboundJobs SyncJob[]    @relation("TargetDevice")
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("devices")
+}
+
+/// 한 시점의 device 스캔 결과. items + bundle (zip) 한 쌍.
+/// bundle 본체는 BundleStorage 백엔드 (local fs / Supabase Storage) 에 저장되고
+/// `bundleStorageKey` 로 참조한다. nullable 인 이유는 manifest 만 먼저 업로드되고
+/// bundle 본체는 별도 multipart 요청으로 채우는 2 단계 업로드 흐름을 허용하기 위함.
+model SyncSnapshot {
+  id               String   @id @default(cuid())
+  orgId            String
+  deviceId         String
+  createdBy        String   // userId — 누가 push 했는지 (보통 device.userId 와 동일)
+  createdAt        DateTime @default(now())
+  /// BundleStorage 가 발급한 key. local 백엔드에서는 파일 경로, supabase 에서는 object key.
+  bundleStorageKey String?
+  /// SyncManifest (version, items[], sourceHost, sourcePlatform, masked)
+  manifest         Json
+  /// 마스킹 적용 여부. manifest.masked 와 동기화. Web 에 명시 표시.
+  masked           Boolean  @default(false)
+  /// items.length — UI 에 빠르게 보여주기 위한 캐시.
+  itemCount        Int      @default(0)
+
+  org    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  device Device       @relation("DeviceSnapshots", fields: [deviceId], references: [id], onDelete: Cascade)
+  jobs   SyncJob[]    @relation("SourceSnapshot")
+
+  @@index([orgId, createdAt])
+  @@index([deviceId, createdAt])
+  @@map("sync_snapshots")
+}
+
+/// Web 의 "복사 실행" 으로 생성된 작업. 대상 device 의 cli `sync pull` 이 폴링해서 처리.
+model SyncJob {
+  id                String    @id @default(cuid())
+  orgId             String
+  sourceSnapshotId  String
+  targetDeviceId    String
+  /// 대상 프로젝트 (project scope item 적용용). nullable — 전역 항목만 있으면 비움.
+  targetProjectId   String?
+  /// 적용할 item 의 id 목록 (manifest 의 items 배열 안에서 식별). JSON string[].
+  itemIds           Json
+  /// 적용 옵션. JSON: { mask?: boolean, overwrite?: 'backup'|'force'|'skip' }
+  options           Json
+  /// pending | running | done | failed | partial
+  status            String    @default("pending")
+  /// 결과 보고. JSON: { applied: string[], skipped: string[], errors: [...] }
+  result            Json?
+  createdBy         String
+  createdAt         DateTime  @default(now())
+  startedAt         DateTime?
+  finishedAt        DateTime?
+
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  snapshot SyncSnapshot @relation("SourceSnapshot", fields: [sourceSnapshotId], references: [id], onDelete: Cascade)
+  target   Device       @relation("TargetDevice", fields: [targetDeviceId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+  @@index([targetDeviceId, status, createdAt])
+  @@map("sync_jobs")
 }
 
 // ============================================================
