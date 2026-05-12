@@ -98,6 +98,22 @@ export default async function SettingsPage() {
       </section>
 
       <section className="bg-panel border rounded-lg p-4">
+        <h2 className="text-sm font-semibold mb-3">Workspace</h2>
+        <Link
+          href="/settings/sync"
+          className="flex justify-between items-center text-sm hover:text-accent"
+        >
+          <div>
+            <div>Sync (Skills 축)</div>
+            <div className="text-xs text-muted">
+              Copy Claude Code skills and settings between your devices.
+            </div>
+          </div>
+          <span className="text-muted">→</span>
+        </Link>
+      </section>
+
+      <section className="bg-panel border rounded-lg p-4">
         <h2 className="text-sm font-semibold mb-3">Security</h2>
         <Link
           href="/settings/sessions"
