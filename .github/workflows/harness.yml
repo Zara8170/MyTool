@@ -1,0 +1,44 @@
+name: harness
+
+# packages/harness 의 Python 테스트 실행. Node 쪽 CI 는 별도 워크플로우에서.
+# packages/harness 또는 워크플로우 자체 변경 시에만 실행해서 비용 절약.
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "packages/harness/**"
+      - ".github/workflows/harness.yml"
+  pull_request:
+    paths:
+      - "packages/harness/**"
+      - ".github/workflows/harness.yml"
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    name: pytest (Python 3.11)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/harness
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: packages/harness/pyproject.toml
+
+      - name: Install harness (editable) + pytest
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest
+
+      - name: Run pytest
+        run: python -m pytest -q
