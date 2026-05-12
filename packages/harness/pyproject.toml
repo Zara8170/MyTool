@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-harness"
+version = "0.1.0"
+description = "Autonomous development harness powered by Claude Code"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+harness = "claude_harness.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

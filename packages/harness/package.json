@@ -1,0 +1,12 @@
+{
+  "name": "@mytool/harness",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Autonomous development harness (Python). Not a pnpm workspace — invoked via root scripts. See README.",
+  "scripts": {
+    "build": "echo \"@mytool/harness: build is a no-op (pyproject handles packaging)\"",
+    "test": "python -m pytest -q",
+    "typecheck": "echo \"@mytool/harness: typecheck is a no-op (no TS)\"",
+    "lint": "echo \"@mytool/harness: lint is a no-op\""
+  }
+}
