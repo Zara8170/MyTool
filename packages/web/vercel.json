@@ -1,5 +1,11 @@
 {
   "framework": "nextjs",
   "buildCommand": "cd ../.. && pnpm --filter @mytool/shared build && pnpm --filter @mytool/web build",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "develop": false
+    }
+  }
 }
