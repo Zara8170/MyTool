@@ -7,6 +7,7 @@ export type ErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "GONE"
   | "RATE_LIMITED"
   | "INTERNAL_ERROR";
 
@@ -39,6 +40,10 @@ export function notFound(message = "Not found"): ApiError {
 
 export function conflict(message = "Conflict"): ApiError {
   return new ApiError(409, "CONFLICT", message);
+}
+
+export function gone(message = "Resource is gone"): ApiError {
+  return new ApiError(410, "GONE", message);
 }
 
 export function apiErrorResponse(err: ApiError): NextResponse {
