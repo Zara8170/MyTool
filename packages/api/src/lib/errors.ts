@@ -56,6 +56,10 @@ export function rateLimited(message = "Too many requests"): ApiError {
   return new ApiError(429, "RATE_LIMITED", message);
 }
 
+export function gone(message = "Resource is gone"): ApiError {
+  return new ApiError(410, "GONE", message);
+}
+
 export function validationError(details: unknown): ApiError {
   return new ApiError(
     400,
